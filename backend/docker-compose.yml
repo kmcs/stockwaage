@@ -1,0 +1,103 @@
+services:
+  influxdb:
+    image: influxdb:2.7
+    container_name: influxdb
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+    env_file:
+      - .env
+      - .env.secrets
+    volumes:
+      - ./influxdb/data:/var/lib/influxdb2
+      - influxdb_config:/etc/influxdb2
+    healthcheck:
+      test: ["CMD", "influx", "ping", "-host", "http://localhost:8086"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # Creates extra buckets after the first setup
+  influx-init:
+    image: influxdb:2.7
+    container_name: influx-init
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    env_file:
+      - .env
+      - .env.secrets
+    volumes:
+      - ./infra/influx-init.sh:/init.sh:ro
+    entrypoint: ["/bin/bash", "/init.sh"]
+    restart: "no"
+
+  # Optional but recommended for ESP32
+  mosquitto:
+    depends_on:
+      mosquitto-init:
+        condition: service_completed_successfully
+    image: eclipse-mosquitto:2
+    container_name: mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - mosquitto_config:/mosquitto/config/
+      - ./infra/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./infra/mosquitto/acl:/mosquitto/config/acl:ro
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+
+  mosquitto-init:
+    image: eclipse-mosquitto:2
+    container_name: mosquitto-init
+    restart: "no"
+    env_file:
+      - .env
+      - .env.secrets
+    volumes:
+      - mosquitto_config:/mosquitto/config/
+      - ./infra/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./infra/mosquitto/acl:/mosquitto/config/acl:ro
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+      - ./infra/mosquitto/init.sh:/init.sh:ro
+    entrypoint: ["/bin/sh", "/init.sh"]
+
+
+  telegraf:
+    image: telegraf:1.30
+    container_name: telegraf
+    restart: unless-stopped
+    depends_on:
+      - mosquitto
+      - influxdb
+    env_file:
+      - .env
+      - .env.secrets
+    environment:
+      TZ: Europe/Berlin
+    volumes:
+      - ./infra/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/data:/var/lib/grafana:rw
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    env_file:
+      - .env
+      - .env.grafana-token
+    depends_on:
+      - influxdb
+
+volumes:
+  influxdb_config:
+  mosquitto_config:
+  mosquitto_data:
+  mosquitto_log:

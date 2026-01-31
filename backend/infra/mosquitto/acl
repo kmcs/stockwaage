@@ -1,0 +1,6 @@
+user telegraf
+topic read stockwaage/#
+
+user device1
+topic write stockwaage/device/1/#
+

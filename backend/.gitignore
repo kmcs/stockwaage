@@ -1,0 +1,10 @@
+influxdb/data
+grafana/data
+.env.secrets
+.env.grafana-token
+*.secret
+**/passwd
+
+# OS / Editor
+.DS_Store
+.vscode/
