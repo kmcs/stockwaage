@@ -3,8 +3,9 @@ services:
     image: influxdb:2.7
     container_name: influxdb
     restart: unless-stopped
-    ports:
-      - "8086:8086"
+    cpus: 0.50
+    mem_limit: 256m
+    mem_reservation: 128m
     env_file:
       - .env
       - .env.secrets
@@ -21,6 +22,9 @@ services:
   influx-init:
     image: influxdb:2.7
     container_name: influx-init
+    cpus: 0.10
+    mem_limit: 64m
+    mem_reservation: 32m
     depends_on:
       influxdb:
         condition: service_healthy
@@ -40,6 +44,9 @@ services:
     image: eclipse-mosquitto:2
     container_name: mosquitto
     restart: unless-stopped
+    cpus: 0.10
+    mem_limit: 64m
+    mem_reservation: 32m
     ports:
       - "1883:1883"
     volumes:
@@ -53,6 +60,9 @@ services:
     image: eclipse-mosquitto:2
     container_name: mosquitto-init
     restart: "no"
+    cpus: 0.05
+    mem_limit: 32m
+    mem_reservation: 16m
     env_file:
       - .env
       - .env.secrets
@@ -70,6 +80,9 @@ services:
     image: telegraf:1.30
     container_name: telegraf
     restart: unless-stopped
+    cpus: 0.10
+    mem_limit: 64m
+    mem_reservation: 32m
     depends_on:
       - mosquitto
       - influxdb
@@ -85,6 +98,9 @@ services:
     image: grafana/grafana:latest
     container_name: grafana
     restart: unless-stopped
+    cpus: 0.25
+    mem_limit: 192m
+    mem_reservation: 96m
     ports:
       - "3000:3000"
     volumes:
